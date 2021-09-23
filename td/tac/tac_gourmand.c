@@ -31,7 +31,6 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	errno = 0;
 	int fd = open(argv[1], O_RDONLY);
 	if (fd == -1) {
 		perror("open");
@@ -39,7 +38,6 @@ int main(int argc, char **argv) {
 	}
 
 	struct stat st;
-	errno = 0;
 	if (fstat(fd, &st) != 0) {
 		perror("stat");
 		exit(EXIT_FAILURE);
@@ -47,7 +45,7 @@ int main(int argc, char **argv) {
 
 	char *buf = malloc(st.st_size);
 	if (buf == NULL) {
-		printf("Error : buffer allocation failed\n");
+		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
 	
@@ -60,8 +58,9 @@ int main(int argc, char **argv) {
 
 	ssize_t bytes_written = 0;
 	while (bytes_written < st.st_size) {
-		bytes_written = write(STDOUT_FILENO, buf + bytes_written, st.st_size - bytes_written);
+		bytes_written += write(STDOUT_FILENO, buf + bytes_written, st.st_size - bytes_written);
 	}
+	close(fd);
 	free(buf);
 	exit(EXIT_SUCCESS);
 }

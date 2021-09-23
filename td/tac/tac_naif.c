@@ -28,7 +28,6 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	errno = 0;
 	int fd = open(argv[1], O_RDONLY);
 	if (fd == -1) {
 		perror("open");
@@ -36,7 +35,6 @@ int main(int argc, char **argv) {
 	}
 
 	struct stat st;
-	errno = 0;
 	if (fstat(fd, &st) != 0) {
 		perror("stat");
 		exit(EXIT_FAILURE);

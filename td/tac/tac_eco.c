@@ -36,7 +36,6 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	errno = 0;
 	int fd = open(argv[1], O_RDONLY);
 	if (fd == -1) {
 		perror("open");
@@ -44,7 +43,6 @@ int main(int argc, char **argv) {
 	}
 
 	struct stat st;
-	errno = 0;
 	if (fstat(fd, &st) != 0) {
 		perror("stat");
 		exit(EXIT_FAILURE);
@@ -53,7 +51,7 @@ int main(int argc, char **argv) {
 	ssize_t buf_size = st.st_blksize;
 	char *buf = malloc(buf_size);
 	if (buf == NULL) {
-		printf("Error : buffer allocation failed\n");
+		perror("malloc");
 		exit(EXIT_FAILURE);
 	}
 	
@@ -78,7 +76,7 @@ int main(int argc, char **argv) {
 		}
 		total_bytes_read += bytes_read;
 	}
-
+	close(fd);
 	free(buf);
 	exit(EXIT_SUCCESS);
 }
