@@ -42,8 +42,8 @@ int main(int argc, char **argv) {
 
 	char buf[1];
 	ssize_t bytes_read = 0;
-	for (off_t offset = st.st_size; offset > 0; offset -= bytes_read) {
-		bytes_read = pread(fd, buf, 1, offset-1);
+	for (off_t offset = st.st_size - 1; offset >= 0; offset -= bytes_read) {
+		bytes_read = pread(fd, buf, 1, offset);
 		write(STDOUT_FILENO, buf, bytes_read);
 	}
 	exit(EXIT_SUCCESS);
