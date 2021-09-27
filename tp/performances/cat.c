@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
 	// need this because the only way to discriminate between a valid return and an error is to check errno
 	// see man 3 strtoul
 	errno = 0;
-	unsigned long buf_size = strtoul(argv[1], &endptr, 10);
+	long buf_size = strtol(argv[1], &endptr, 10);
 
 	if (errno != 0) {
 		perror("strtol");
@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
 	}
 
 	// checking that buf_size > 0
-	if (buf_size == 0) {
+	if (buf_size <= 0) {
 		fprintf(stderr, "Error : buf_size needs to be strictly positive\n");
 
 	}
@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
 			bytes_written += write_rc;
 		}
 	}
-	
+
 	close(fd);
 	free(buf);
 
