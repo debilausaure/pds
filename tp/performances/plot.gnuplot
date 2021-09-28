@@ -1,8 +1,8 @@
 set term pngcairo size 1024,720
 set output "plot.png"
-set title "Temps d'exécution moyen de 'cat' en fonction de la taille du tampon choisie"
+set title "Temps d'exécution moyen  (sur 10 exécutions) de 'cat' en fonction de la taille du tampon choisie"
 set logscale x
-#set logscale y
+set logscale y
 set xlabel "Taille du tampon" offset 0, -2.0
 set ylabel "Temps d'exécution (en secondes)"
 set xtics out offset 0,-3.0

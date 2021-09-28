@@ -12,3 +12,6 @@ plot.png: exec_time.dat plot.gnuplot
 
 clean:
 	rm -rf cat random_data.dat exec_time.dat plot.png
+
+.DEFAULT: plot.png
+.PHONY: all clean
