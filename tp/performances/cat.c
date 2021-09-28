@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
 
 	// checking number of args
 	if (argc != 3) {
-		fprintf(stderr, "Error : Expected 3 args\nUsage : %s buf_size file_path\n", argv[1]);
+		fprintf(stderr, "Error : Expected 2 args\nUsage : %s buf_size file_path\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 

@@ -9,7 +9,7 @@ do
 	TOTAL_AVG=0.00
 	USER_AVG=0.00
 	SYSTEM_AVG=0.00
-	for iter in $(seq 1 $ITERATION)
+	for _ in $(seq 1 $ITERATION)
 	do
 		TIMES=$(/usr/bin/time -f "%e %U %S" ./cat "$BUF_SIZE" "$INPUT_FILE" 2>&1 > /dev/null)
 		TOTAL=$( echo "$TIMES" | cut -d ' ' -f 1)

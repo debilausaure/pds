@@ -1,4 +1,4 @@
-cat: cat.c
+%: %.c
 	$(CC) -Wall -Wextra -o $@ $<
 
 exec_time.dat: random_data.dat cat experience.sh
@@ -11,7 +11,7 @@ plot.png: exec_time.dat plot.gnuplot
 	gnuplot plot.gnuplot
 
 clean:
-	rm -rf cat random_data.dat exec_time.dat plot.png
+	rm -rf cat cat-lib random_data.dat exec_time.dat plot.png
 
 .DEFAULT: plot.png
 .PHONY: all clean
