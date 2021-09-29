@@ -1,6 +1,6 @@
-set term pngcairo size 1024,720
-set output "plot.png"
-set title "Temps d'exécution moyen  (sur 10 exécutions) de 'cat' en fonction de la taille du tampon choisie"
+set term svg size 1024,720
+set output "plot.svg"
+set title "Temps d'exécution moyen  (sur 10 exécutions) de 'cat' sur un fichier de 100Mio en fonction de la taille du tampon choisie"
 set logscale x
 set logscale y
 set xlabel "Taille du tampon" offset 0, -2.0
