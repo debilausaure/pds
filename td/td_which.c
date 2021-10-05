@@ -7,8 +7,8 @@
 #include <string.h>
 #include <stdio.h>
 
-const char **get_path_dirs();
-bool which(const char *command, const char **path_directories);
+char const *const *get_path_dirs();
+bool which(char const *const command, char const *const *const path_directories);
 
 /* Contrat : 
  *  - EXIT_SUCCESS si les toutes commandes passées en
@@ -24,7 +24,7 @@ int main (int argc, char *argv[]) {
 
 	/* On récupère les répertoires du PATH
 	 * ça nous permet de les `free()` à la fin de l'exécution */
-	const char **path_directories = get_path_dirs();
+	char const *const *const path_directories = get_path_dirs();
 
 	/* Flag mis à EXIT_FAILURE dès lors qu'une commande n'a pas été trouvée  */
 	int status = EXIT_SUCCESS;
@@ -49,14 +49,14 @@ int main (int argc, char *argv[]) {
 /* Contrat :
  *   - retourne TRUE ou FALSE en fonction de si la commande a été trouvée ou non
  *   - Affiche le chemin de la commande si trouvée, affiche un message d'erreur sinon*/
-bool which(const char *command, const char **path_directories) {
+bool which(char const *const command, char const *const *const path_directories) {
 	
 	/* déclare un tableau qui contiendra la concaténation
 	 * de la commande et du répertoire */
 	/* PATHMAX est la taille maximum possible du path, def. dans <limits.h> */
 	char command_path_buffer[PATH_MAX+1];
 
-	for (char **dir_name_ptr = path_directories; *dir_name_ptr != NULL; dir_name_ptr++) {
+	for (char const *const *dir_name_ptr = path_directories; *dir_name_ptr != NULL; dir_name_ptr++) {
 		/* concaténation de deux chaines dans command_path_buffer */
 		snprintf(command_path_buffer, PATH_MAX, "%s/%s", *dir_name_ptr, command);
 		/* on vérifie que le binaire existe et qu'il est exécutable
@@ -75,7 +75,7 @@ bool which(const char *command, const char **path_directories) {
 	return false;
 }
 
-const char **get_path_dirs() {
+char const *const *get_path_dirs() {
 	/* Récupère la chaine de la variable d'environnement PATH */
 	char *path = getenv("PATH");
 	/* On s'assure que la variable d'environnement existe */
@@ -97,7 +97,7 @@ const char **get_path_dirs() {
 	}
 
 	/* On crée un tableau du nombre de répertoires + 1 pour délimiter la fin du tableau */
-	const char **path_dirs = malloc((dir_count + 1) * sizeof(char *));
+	char const **const path_dirs = malloc((dir_count + 1) * sizeof(char *));
 	if(path_dirs == NULL){
 		perror("malloc");
 		exit(EXIT_FAILURE);
