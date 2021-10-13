@@ -5,7 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "tar.h"
+#include "ustar_header.h"
 
 unsigned long arrondi512(unsigned long n) {
 	unsigned long arrondi = (n >> 9) << 9; // 9 = log2(512)
@@ -17,14 +17,17 @@ unsigned long arrondi512(unsigned long n) {
 
 int main(int argc, char *argv[]) {
 
-	if (argc != 2) {
-		fprintf(stderr, "Error : Expected 1 argument\nUsage : %s file.tar\n", argv[0]);
+	if (argc > 2) {
+		fprintf(stderr, "Error : Expected at most 1 argument\nUsage : %s [file.tar]\n", argv[0]);
 	}
 
-	int fd = open(argv[1], O_RDONLY);
-	if (fd == -1) {
-		perror("open");
-		exit(EXIT_FAILURE);
+	int fd = STDIN_FILENO;
+	if (argc == 2) {
+		fd = open(argv[1], O_RDONLY);
+		if (fd == -1) {
+			perror("open");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	tar_header_t header;
