@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "ustar_header.h"
@@ -14,6 +15,7 @@ bool is_block_null(char* block);
 void parse_metadata_block(char *metadata_block, sane_ustar_header_t *sane_header);
 void display_metadata(sane_ustar_header_t *header);
 unsigned long parse_from_octal_str(char *octal_str, unsigned max_str_size);
+void print_type(char file_type);
 
 unsigned long arrondi512(unsigned long n) {
 	unsigned long arrondi = (n >> 9) << 9; // 9 = log2(512)
@@ -23,10 +25,82 @@ unsigned long arrondi512(unsigned long n) {
 	return arrondi;
 }
 
-void display_metadata(sane_ustar_header_t *header) {
-	printf("File name : %s\n", header->complete_name);
-	printf("Ownership : (%d/%s) (%d/%s)\n", header->uid, header->uname, header->gid, header->gname);
+void print_access_rights(unsigned int mode, char typeflag) {
+    printf("%c%c%c%c%c%c%c%c%c%c",
+        (typeflag == DIRTYPE) ? 'd' : '-', // file is a directory
+        (mode & TUREAD )      ? 'r' : '-', // file is owner readable
+        (mode & TUWRITE)      ? 'w' : '-', // file is owner writable
+        (mode & TUEXEC )      ? 'x' : '-', // file is owner executable
+        (mode & TGREAD )      ? 'r' : '-', // file is group readable
+        (mode & TGWRITE)      ? 'w' : '-', // file is group writable
+        (mode & TGEXEC )      ? 'x' : '-', // file is group executable
+        (mode & TOREAD )      ? 'r' : '-', // file is readable by others
+        (mode & TOWRITE)      ? 'w' : '-', // file is writable by others
+        (mode & TOEXEC )      ? 'x' : '-'  // file is executable by others
+    );
 }
+
+void print_type(char file_type) {
+	switch(file_type) {
+		case REGTYPE:
+		case AREGTYPE:
+			printf("Regular file");
+			break;
+		case LNKTYPE:
+			printf("Hard Link");
+			break;
+		case SYMTYPE:
+			printf("Symbolic Link");
+			break;
+		case CHRTYPE:
+			printf("Character special");
+			break;
+		case BLKTYPE:
+			printf("Block special");
+			break;
+		case DIRTYPE:
+			printf("Directory");
+			break;
+		case FIFOTYPE:
+			printf("Named pipe");
+			break;
+		case CONTTYPE:
+			printf("Contiguous file");
+			break;
+		default:
+			printf("Unknown type");
+	}
+}
+
+void print_time(time_t mtime) {
+	char outstr[200];
+	struct tm *tmp = localtime(&mtime);
+	if (tmp == NULL) {
+		perror("localtime");
+		exit(EXIT_FAILURE);
+	}
+
+	if (strftime(outstr, sizeof(outstr), "%F %R", tmp) == 0) {
+		fprintf(stderr, "strftime failed");
+		exit(EXIT_FAILURE);
+	}
+	printf("%s", outstr);
+}
+
+
+void display_metadata(sane_ustar_header_t *header) {
+	print_access_rights(header->mode, header->typeflag);
+	printf(" %d/%d %s/%s", header->uid, header->gid, header->uname, header->gname);
+	printf(" %d ", header->size);
+	print_time(header->mtime);
+	if (header->typeflag == SYMTYPE)
+		printf(" %s -> %s (", header->complete_name, header->linkname);
+	else
+		printf(" %s (", header->complete_name);
+	print_type(header->typeflag);printf(")\n");
+}
+
+
 
 void get_block(int fd, char *buf) {
 	ssize_t bytes_read = 0;
@@ -80,11 +154,11 @@ void parse_metadata_block(char *metadata_block, sane_ustar_header_t *sane_header
 	strncpy(name_buf, header->name, 100);
 	name_buf[100] = '\0';
 
-	sane_header->mode  = parse_from_octal_str(header->mode,  8);
-	sane_header->uid   = parse_from_octal_str(header->uid ,  8);
-	sane_header->gid   = parse_from_octal_str(header->gid ,  8);
-	sane_header->size  = parse_from_octal_str(header->size, 12);
-	sane_header->mtime = parse_from_octal_str(header->size, 12);
+	sane_header->mode  = parse_from_octal_str(header->mode,   8);
+	sane_header->uid   = parse_from_octal_str(header->uid ,   8);
+	sane_header->gid   = parse_from_octal_str(header->gid ,   8);
+	sane_header->size  = parse_from_octal_str(header->size,  12);
+	sane_header->mtime = parse_from_octal_str(header->mtime, 12);
 
 	sane_header->typeflag = header->typeflag;
 	/** 
@@ -92,7 +166,7 @@ void parse_metadata_block(char *metadata_block, sane_ustar_header_t *sane_header
 	 * files that are links to pathnames >100 chars long can not be stored
 	 * in a tar archive.
 	 */
-	if (sane_header->typeflag == LNKTYPE) {
+	if (sane_header->typeflag == SYMTYPE) {
 		strncpy(sane_header->linkname, header->linkname, 100);
 		sane_header->linkname[100] = '\0';
 	} else {
@@ -209,10 +283,19 @@ int main(int argc, char *argv[]) {
 		display_metadata(&sane_header);
 		// skip data blocks
 		unsigned bytes_to_read = arrondi512(sane_header.size);
-		//if (fd_is_seekable) {
-			//lseek
-		//	continue;
-		//}
+		if (fd_is_seekable) {
+			off_t offset = lseek(fd, bytes_to_read, SEEK_CUR);
+			if (offset == -1) {
+				if (errno == ESPIPE)
+					fd_is_seekable = false;
+				else {
+					perror("lseek");
+					exit(EXIT_FAILURE);
+				}
+			} else {
+				continue;
+			}
+		}
 		for (unsigned block_n = bytes_to_read / 512; block_n > 0; block_n--) {
 			get_block(fd, block);
 		}
