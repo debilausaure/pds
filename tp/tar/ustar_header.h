@@ -1,4 +1,4 @@
-typedef struct tar_posix_header_s
+typedef struct ustar_header_s
 {                    /* Byte offset    Field type                 */
   char name[100];            /*   0    NUL-terminated if NUL fits */
   char mode[8];              /* 100                               */
@@ -20,9 +20,55 @@ typedef struct tar_posix_header_s
 /* If the first character of prefix is '\0', the file name is name;
    otherwise, it is prefix/name.  Files whose pathnames don't fit in
    that length can not be stored in a tar archive.  */
-} tar_header_t;
+} ustar_header_t;
+
+typedef struct sane_ustar_header_s {
+	char complete_name[257];
+	mode_t mode;
+	uid_t uid;
+	gid_t gid;
+	size_t size;
+	unsigned mtime;
+	char chksum[8];
+	char typeflag;
+	char linkname[101];
+	char uname[32];
+	char gname[32];
+	unsigned devmajor;
+	unsigned devminor;
+} sane_ustar_header_t;
 
 #define TMAGIC   "ustar"        /* ustar and a null */
 #define TMAGLEN  6
 #define TVERSION "00"           /* 00 and no null */
 #define TVERSLEN 2
+
+/* Mode bitmasks */
+
+#define TSUID	04000
+#define TSGID	02000
+#define TUREAD	00400
+#define TUWRITE	00200
+#define TUEXEC	00100
+#define TGREAD	00040
+#define TGWRITE	00020
+#define TGEXEC	00010
+#define TOREAD	00004
+#define TOWRITE	00002
+#define TOEXEC	00001
+
+/* The values for typeflag:
+   Values 'A'-'Z' are reserved for custom implementations.
+   All other values are reserved for future POSIX.1 revisions.  */
+
+#define REGTYPE		'0'	/* Regular file (preferred code).  */
+#define AREGTYPE	'\0'	/* Regular file (alternate code).  */
+#define LNKTYPE		'1'	/* Hard link.  */
+#define SYMTYPE		'2'	/* Symbolic link (hard if not supported).  */
+#define CHRTYPE		'3'	/* Character special.  */
+#define BLKTYPE		'4'	/* Block special.  */
+#define DIRTYPE		'5'	/* Directory.  */
+#define FIFOTYPE	'6'	/* Named pipe.  */
+#define CONTTYPE	'7'	/* Contiguous file */
+ /* (regular file if not supported).  */
+
