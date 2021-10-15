@@ -27,30 +27,30 @@ unsigned long arrondi512(unsigned long n) {
 
 void print_access_rights(unsigned int mode, char typeflag) {
 	switch(typeflag) {
-	case DIRTYPE :
-		printf("d");
-		break;
-	case LNKTYPE :
-		printf("h");
-		break;
-	case SYMTYPE :
-		printf("l");
-		break;
-	default:
-		printf("-");
-		break;
+		case DIRTYPE :
+			printf("d");
+			break;
+		case LNKTYPE :
+			printf("h");
+			break;
+		case SYMTYPE :
+			printf("l");
+			break;
+		default:
+			printf("-");
+			break;
 	}
 	printf("%c%c%c%c%c%c%c%c%c",
-        (mode & TUREAD )      ? 'r' : '-', // file is owner readable
-        (mode & TUWRITE)      ? 'w' : '-', // file is owner writable
-        (mode & TUEXEC )      ? 'x' : '-', // file is owner executable
-        (mode & TGREAD )      ? 'r' : '-', // file is group readable
-        (mode & TGWRITE)      ? 'w' : '-', // file is group writable
-        (mode & TGEXEC )      ? 'x' : '-', // file is group executable
-        (mode & TOREAD )      ? 'r' : '-', // file is readable by others
-        (mode & TOWRITE)      ? 'w' : '-', // file is writable by others
-        (mode & TOEXEC )      ? 'x' : '-'  // file is executable by others
-    );
+        	(mode & TUREAD )      ? 'r' : '-', // file is owner readable
+        	(mode & TUWRITE)      ? 'w' : '-', // file is owner writable
+        	(mode & TUEXEC )      ? 'x' : '-', // file is owner executable
+        	(mode & TGREAD )      ? 'r' : '-', // file is group readable
+        	(mode & TGWRITE)      ? 'w' : '-', // file is group writable
+        	(mode & TGEXEC )      ? 'x' : '-', // file is group executable
+        	(mode & TOREAD )      ? 'r' : '-', // file is readable by others
+        	(mode & TOWRITE)      ? 'w' : '-', // file is writable by others
+        	(mode & TOEXEC )      ? 'x' : '-'  // file is executable by others
+	);
 }
 
 void print_type(char file_type) {
@@ -94,7 +94,7 @@ void print_time(time_t mtime) {
 	}
 
 	if (strftime(time_str, sizeof(time_str), "%F %R", stm) == 0) {
-		fprintf(stderr, "strftime failed");
+		fprintf(stderr, "Error : could not format file modification date\n");
 		exit(EXIT_FAILURE);
 	}
 	printf("%s", time_str);
@@ -121,7 +121,7 @@ void get_block(int fd, char *buf) {
 	while(total_bytes_read != 512) {
 		bytes_read = read(fd, buf + total_bytes_read, 512 - total_bytes_read);
 		if (bytes_read == 0) {
-			fprintf(stderr, "Unexpected end of file while retrieving a block\n");
+			fprintf(stderr, "Error : Unexpected end of file while retrieving a block\n");
 			exit(EXIT_FAILURE);
 		}
 		if (bytes_read == -1) {
@@ -175,9 +175,9 @@ void parse_metadata_block(char *metadata_block, sane_ustar_header_t *sane_header
 
 	sane_header->typeflag = header->typeflag;
 	/** 
-	 * linkname is only valid when typeflag==LNKTYPE. It doesn't use prefix;
-	 * files that are links to pathnames >100 chars long can not be stored
-	 * in a tar archive.
+	 * linkname is only valid when typeflag==LNKTYPE. (Seems likes SYMTYPE
+	 * works too) It doesn't use prefix; files that are links to pathnames
+	 * >100 chars long can not be stored in a tar archive.
 	 */
 	if (sane_header->typeflag == SYMTYPE || sane_header->typeflag == LNKTYPE) {
 		strncpy(sane_header->linkname, header->linkname, 100);
@@ -217,7 +217,24 @@ void parse_metadata_block(char *metadata_block, sane_ustar_header_t *sane_header
 	 * treating each byte as an 8-bit unsigned value and treating the
 	 * 8 bytes of chksum as blank characters.
 	 */
-	// TODO
+	unsigned long computed_chksum = 0;
+	unsigned byte_n;
+	for (byte_n = 0; byte_n < 148; byte_n++) {
+		computed_chksum += ((unsigned char *)metadata_block)[byte_n];
+	}
+	for (/*      */; byte_n < 156; byte_n++) {
+		computed_chksum += ' ';
+	}
+	for (/*      */; byte_n < sizeof(ustar_header_t); byte_n++) {
+		computed_chksum += ((unsigned char *)metadata_block)[byte_n];
+	}
+	unsigned long header_chksum = parse_from_octal_str(header->chksum, 6);
+	if (header_chksum != computed_chksum) {
+		fprintf(stderr, "Warning : computed checksum does not match archive checksum.\n");
+	}
+	if (header->chksum[6] != '\0' || header->chksum[7] != ' ') {
+		fprintf(stderr, "Warning : archive checksum matches but is not padded with the expected bytes.\n");
+	}
 }
 
 unsigned long parse_from_octal_str(char *octal_str, unsigned max_str_size) {
@@ -240,12 +257,12 @@ unsigned long parse_from_octal_str(char *octal_str, unsigned max_str_size) {
 	}
 
 	if (endptr == char_buffer) {
-		fprintf(stderr, "Error : Could not parse a size in field size\n");
+		fprintf(stderr, "Error : Could not parse number from %s\n", char_buffer);
 		exit(EXIT_FAILURE);
 	}
 
 	if (*endptr != '\0')
-		printf("Warning : Further characters after number in field size: \"%s\"\n", endptr);
+		fprintf(stderr, "Warning : Further unparsable characters after parsed number %ld \"%s\"\n", parsed_number, endptr);
 	free(char_buffer);
 	return parsed_number;
 }
