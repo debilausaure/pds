@@ -26,8 +26,21 @@ unsigned long arrondi512(unsigned long n) {
 }
 
 void print_access_rights(unsigned int mode, char typeflag) {
-    printf("%c%c%c%c%c%c%c%c%c%c",
-        (typeflag == DIRTYPE) ? 'd' : '-', // file is a directory
+	switch(typeflag) {
+	case DIRTYPE :
+		printf("d");
+		break;
+	case LNKTYPE :
+		printf("h");
+		break;
+	case SYMTYPE :
+		printf("l");
+		break;
+	default:
+		printf("-");
+		break;
+	}
+	printf("%c%c%c%c%c%c%c%c%c",
         (mode & TUREAD )      ? 'r' : '-', // file is owner readable
         (mode & TUWRITE)      ? 'w' : '-', // file is owner writable
         (mode & TUEXEC )      ? 'x' : '-', // file is owner executable
@@ -73,27 +86,27 @@ void print_type(char file_type) {
 }
 
 void print_time(time_t mtime) {
-	char outstr[200];
-	struct tm *tmp = localtime(&mtime);
-	if (tmp == NULL) {
+	char time_str[17];
+	struct tm *stm = localtime(&mtime);
+	if (stm == NULL) {
 		perror("localtime");
 		exit(EXIT_FAILURE);
 	}
 
-	if (strftime(outstr, sizeof(outstr), "%F %R", tmp) == 0) {
+	if (strftime(time_str, sizeof(time_str), "%F %R", stm) == 0) {
 		fprintf(stderr, "strftime failed");
 		exit(EXIT_FAILURE);
 	}
-	printf("%s", outstr);
+	printf("%s", time_str);
 }
 
 
 void display_metadata(sane_ustar_header_t *header) {
 	print_access_rights(header->mode, header->typeflag);
 	printf(" %d/%d %s/%s", header->uid, header->gid, header->uname, header->gname);
-	printf(" %d ", header->size);
+	printf(" %3ld ", header->size);
 	print_time(header->mtime);
-	if (header->typeflag == SYMTYPE)
+	if (header->typeflag == SYMTYPE || header->typeflag == LNKTYPE)
 		printf(" %s -> %s (", header->complete_name, header->linkname);
 	else
 		printf(" %s (", header->complete_name);
@@ -166,7 +179,7 @@ void parse_metadata_block(char *metadata_block, sane_ustar_header_t *sane_header
 	 * files that are links to pathnames >100 chars long can not be stored
 	 * in a tar archive.
 	 */
-	if (sane_header->typeflag == SYMTYPE) {
+	if (sane_header->typeflag == SYMTYPE || sane_header->typeflag == LNKTYPE) {
 		strncpy(sane_header->linkname, header->linkname, 100);
 		sane_header->linkname[100] = '\0';
 	} else {
@@ -282,21 +295,24 @@ int main(int argc, char *argv[]) {
 		// display the metadata infos
 		display_metadata(&sane_header);
 		// skip data blocks
-		unsigned bytes_to_read = arrondi512(sane_header.size);
+		unsigned bytes_to_skip = arrondi512(sane_header.size);
 		if (fd_is_seekable) {
-			off_t offset = lseek(fd, bytes_to_read, SEEK_CUR);
-			if (offset == -1) {
-				if (errno == ESPIPE)
-					fd_is_seekable = false;
-				else {
-					perror("lseek");
-					exit(EXIT_FAILURE);
-				}
-			} else {
+			off_t offset = lseek(fd, bytes_to_skip, SEEK_CUR);
+			// if lseek succeeded, continue parsing
+			if (offset != -1)
 				continue;
+			// if lseek failed
+			// check if it is because the file is not seekable
+			if (errno == ESPIPE)
+				// prevent the program from trying lseek next loops
+				fd_is_seekable = false;
+			else {
+				perror("lseek");
+				exit(EXIT_FAILURE);
 			}
 		}
-		for (unsigned block_n = bytes_to_read / 512; block_n > 0; block_n--) {
+		// fallback whenever file is not seekable
+		for (unsigned block_n = bytes_to_skip / 512; block_n > 0; block_n--) {
 			get_block(fd, block);
 		}
 	}
